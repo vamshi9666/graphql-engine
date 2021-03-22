@@ -37,6 +37,7 @@ import           Control.Monad.Stateless
 import           Control.Monad.Trans.Control               (MonadBaseControl (..))
 import           Control.Monad.Trans.Managed               (ManagedT (..), allocate)
 import           Control.Monad.Unique
+import           Data.FileEmbed                            (makeRelativeToProject)
 import           Data.Time.Clock                           (UTCTime)
 #ifndef PROFILING
 import           GHC.AssertNF
@@ -273,11 +274,11 @@ initialiseServeCtx env GlobalCtx{..} so@ServeOptions{..} = do
 
   let maybeDefaultSourceConfig = fst _gcDefaultPostgresConnInfo <&> \(dbUrlConf, _) ->
         let connSettings = PostgresPoolSettings
-                           { _ppsMaxConnections = Q.cpConns soConnParams
-                           , _ppsIdleTimeout    = Q.cpIdleTime soConnParams
-                           , _ppsRetries        = fromMaybe 1 $ snd _gcDefaultPostgresConnInfo
+                           { _ppsMaxConnections = Just $ Q.cpConns soConnParams
+                           , _ppsIdleTimeout    = Just $ Q.cpIdleTime soConnParams
+                           , _ppsRetries        = snd _gcDefaultPostgresConnInfo <|> Just 1
                            }
-            sourceConnInfo = PostgresSourceConnInfo dbUrlConf connSettings
+            sourceConnInfo = PostgresSourceConnInfo dbUrlConf (Just connSettings)
         in PostgresConnConfiguration sourceConnInfo Nothing
       sqlGenCtx = SQLGenCtx soStringifyNum
 
@@ -809,7 +810,7 @@ instance MonadMetadataStorage (MetadataStorageT PGMetadataStorageApp) where
   setCatalogState a b = runInSeparateTx $ setCatalogStateTx a b
 
   getDatabaseUid      = runInSeparateTx getDbId
-  checkMetadataStorageHealth = (lift (asks fst)) >>= checkDbConnection
+  checkMetadataStorageHealth = lift (asks fst) >>= checkDbConnection
 
   getDeprivedCronTriggerStats        = runInSeparateTx getDeprivedCronTriggerStatsTx
   getScheduledEventsForDelivery      = runInSeparateTx getScheduledEventsForDeliveryTx
@@ -848,7 +849,7 @@ mkConsoleHTML path authMode enableTelemetry consoleAssetsDir =
         "" -> "/console"
         r  -> "/console/" <> r
 
-      consoleTmplt = $(M.embedSingleTemplate "src-rsr/console.html")
+      consoleTmplt = $(makeRelativeToProject "src-rsr/console.html" >>= M.embedSingleTemplate)
 
 telemetryNotice :: String
 telemetryNotice =

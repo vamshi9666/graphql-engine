@@ -42,7 +42,6 @@ instance Backend 'Postgres where
   type XNodesAgg               'Postgres = ()
   type XDistinct               'Postgres = ()
 
-  backendTag              = PostgresTag
   functionArgScalarType   = PG._qptName
   isComparableType        = PG.isComparableType
   isNumType               = PG.isNumType

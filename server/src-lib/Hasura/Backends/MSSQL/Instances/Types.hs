@@ -45,9 +45,6 @@ instance Backend 'MSSQL where
   type XNodesAgg               'MSSQL = Void
   type XDistinct               'MSSQL = Void
 
-  backendTag :: BackendTag 'MSSQL
-  backendTag = MSSQLTag
-
   functionArgScalarType :: FunctionArgType 'MSSQL -> ScalarType 'MSSQL
   functionArgScalarType = absurd
 

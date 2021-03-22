@@ -57,9 +57,11 @@ import           Hasura.RQL.DDL.Schema.Cache.Permission
 import           Hasura.RQL.DDL.Schema.Function
 import           Hasura.RQL.DDL.Schema.Table
 import           Hasura.RQL.Types                         hiding (fmFunction, tmTable)
+import           Hasura.SQL.Tag
 import           Hasura.Server.Types                      (MaintenanceMode (..))
 import           Hasura.Server.Version                    (HasVersion)
 import           Hasura.Session
+
 
 buildRebuildableSchemaCache
   :: HasVersion
@@ -381,11 +383,13 @@ buildSchemaCacheRule env = proc (metadata, invalidationKeys) -> do
           remoteSchemaRoles = map _rspmRole . _rsmPermissions =<< OMap.elems remoteSchemas
           sourceRoles =
             HS.fromList $ concat $
-            OMap.elems sources >>=
-              \e -> AB.dispatchAnyBackend @Backend e \(SourceMetadata _ tables _functions _) -> do
-               table <- OMap.elems tables
-               pure ( OMap.keys (_tmInsertPermissions table) <> OMap.keys (_tmSelectPermissions table)
-                    <> OMap.keys (_tmUpdatePermissions table) <> OMap.keys (_tmDeletePermissions table))
+            OMap.elems sources >>= \e ->
+               AB.dispatchAnyBackend @Backend e \(SourceMetadata _ tables _functions _) -> do
+                 table <- OMap.elems tables
+                 pure $ OMap.keys (_tmInsertPermissions table) <>
+                        OMap.keys (_tmSelectPermissions table) <>
+                        OMap.keys (_tmUpdatePermissions table) <>
+                        OMap.keys (_tmDeletePermissions table)
 
           remoteSchemaPermissions =
             let remoteSchemaPermsList = OMap.toList $ _rsmPermissions <$> remoteSchemas
@@ -691,7 +695,8 @@ buildSchemaCacheRule env = proc (metadata, invalidationKeys) -> do
                     runExceptT $ resolveAction env resolvedCustomTypes def scalarsMap
                   let permissionInfos = map (ActionPermissionInfo . _apmRole) actionPermissions
                       permissionMap = mapFromL _apiRole permissionInfos
-                  returnA -< ActionInfo name outObject resolvedDef permissionMap comment)
+                      outputType = unGraphQLType $ _adOutputType def
+                  returnA -< ActionInfo name (outputType, outObject) resolvedDef permissionMap comment)
               |) addActionContext)
            |) (mkActionMetadataObject action)
 

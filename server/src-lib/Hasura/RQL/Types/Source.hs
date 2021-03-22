@@ -4,24 +4,26 @@ module Hasura.RQL.Types.Source where
 
 import           Hasura.Prelude
 
-import qualified Data.HashMap.Strict                   as M
+import qualified Data.HashMap.Strict                 as M
 
 import           Control.Lens
 import           Data.Aeson
 import           Data.Aeson.TH
 
-import qualified Hasura.SQL.AnyBackend                 as AB
-import qualified Hasura.Tracing                        as Tracing
+import qualified Hasura.SQL.AnyBackend               as AB
+import qualified Hasura.Tracing                      as Tracing
 
-import           Hasura.Backends.MSSQL.Instances.Types ()
 import           Hasura.Backends.Postgres.Connection
 import           Hasura.RQL.Types.Backend
 import           Hasura.RQL.Types.Common
 import           Hasura.RQL.Types.Error
 import           Hasura.RQL.Types.Function
+import           Hasura.RQL.Types.Instances          ()
 import           Hasura.RQL.Types.Table
 import           Hasura.SQL.Backend
+import           Hasura.SQL.Tag
 import           Hasura.Session
+
 
 data SourceInfo b
   = SourceInfo
@@ -45,7 +47,7 @@ type SourceCache = HashMap SourceName BackendSourceInfo
 -- They are thus a temporary workaround as we work on generalizing code that
 -- uses the schema cache.
 
-unsafeSourceInfo :: forall b. Backend b => BackendSourceInfo -> Maybe (SourceInfo b)
+unsafeSourceInfo :: forall b. HasTag b => BackendSourceInfo -> Maybe (SourceInfo b)
 unsafeSourceInfo = AB.unpackAnyBackend
 
 unsafeSourceName :: BackendSourceInfo -> SourceName
@@ -53,13 +55,13 @@ unsafeSourceName bsi = AB.dispatchAnyBackend @Backend bsi go
   where
     go (SourceInfo name _ _ _) = name
 
-unsafeSourceTables :: forall b. Backend b => BackendSourceInfo -> Maybe (TableCache b)
+unsafeSourceTables :: forall b. HasTag b => BackendSourceInfo -> Maybe (TableCache b)
 unsafeSourceTables = fmap _siTables . unsafeSourceInfo @b
 
-unsafeSourceFunctions :: forall b. Backend b => BackendSourceInfo -> Maybe (FunctionCache b)
+unsafeSourceFunctions :: forall b. HasTag b => BackendSourceInfo -> Maybe (FunctionCache b)
 unsafeSourceFunctions = fmap _siFunctions . unsafeSourceInfo @b
 
-unsafeSourceConfiguration :: forall b. Backend b => BackendSourceInfo -> Maybe (SourceConfig b)
+unsafeSourceConfiguration :: forall b. HasTag b => BackendSourceInfo -> Maybe (SourceConfig b)
 unsafeSourceConfiguration = fmap _siConfiguration . unsafeSourceInfo @b
 
 getTableRoles :: BackendSourceInfo -> [RoleName]

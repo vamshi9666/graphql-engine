@@ -15,6 +15,7 @@ import           Hasura.Incremental            (Cacheable)
 import           Hasura.RQL.DDL.Headers        ()
 import           Hasura.RQL.Types.Error
 import           Hasura.SQL.Backend
+import           Hasura.SQL.Tag
 import           Hasura.SQL.Types
 
 
@@ -63,7 +64,6 @@ class
   , Data (TableName b)
   , Data (ScalarType b)
   , Data (SQLExpression b)
-  , Typeable b
   , ToSQL (SQLExpression b)
   , FromJSON (BasicOrderType b)
   , FromJSON (Column b)
@@ -99,6 +99,8 @@ class
   , Arbitrary (FunctionName b)
   , Arbitrary (SourceConnConfiguration b)
   , Cacheable (SourceConfig b)
+  , Typeable b
+  , HasTag b
   ) => Backend (b :: BackendType) where
   -- types
   type SourceConfig            b = sc | sc -> b
@@ -127,7 +129,6 @@ class
   type XDistinct               b :: Type
 
   -- functions on types
-  backendTag            :: BackendTag b
   functionArgScalarType :: FunctionArgType b -> ScalarType b
   isComparableType      :: ScalarType b -> Bool
   isNumType             :: ScalarType b -> Bool
